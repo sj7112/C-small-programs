@@ -337,20 +337,21 @@ vector<IPRecord> removePermanent(const vector<IPRecord>& ipList, string BLACK_TE
 
 // 加入nginx | 永久黑名单（加入不存在的记录）
 void addBlack(vector<IPRecord>& ipList, string BLACKLIST, bool isFull) {
+    if (ipList.size() == 0) return; // 跳过
     const unordered_set<string> ipSet = findBlackListIpSet(BLACKLIST);
 
     ofstream outFile(BLACKLIST.c_str(), ios::app);
     if (!outFile) handleError("Error opening temporary blacklist file: " + BLACKLIST); // 异常退出
-
+    
     for (IPRecord black : ipList) {
-    	if (ipSet.find(black.ipAddress) == ipSet.end()) {
-    		if (isFull) {
-    			outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入永久黑名单 
-			} else {
-				outFile << black.ipAddress << endl; // 加入nginx黑名单 
-			}
-		}
-	}
+        if (ipSet.find(black.ipAddress) == ipSet.end()) {
+            if (isFull) {
+                outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入永久黑名单 
+            } else {
+                outFile << black.ipAddress << endl; // 加入nginx黑名单 
+            }
+        }
+    }
     outFile.close();
 }
 
@@ -479,30 +480,30 @@ int main() {
     const size_t TIME_RANGE = 180; // 一次判断180秒内的日志 
     const size_t VISIT_TIMES = 1500; // 必须每3分钟超过1500次访问，才会被放进黑名单
     const size_t MIN_STEP = 30; // 每隔30分钟重算一次永久黑名单
-	// 日志文件路径
-	string LOG_FILE="/var/log/nginx/wp.edu_access.log"; // 其他系统（如Linux）
-	#ifdef _WIN32
-	    LOG_FILE = "./file/wp.edu_access.log"; // Windows系统
-	#endif
-	// 黑名单文件路径
-	const string BLACK_NGINX="./file/black_nginx.conf"; // nginx黑名单
-	const string BLACK_TEMP="./file/black_temp.conf"; // 临时黑名单
-	const string BLACK_TEMP2="./file/black_temp_2.conf"; // 临时黑名单-永久
-	// 临时文件路径
-	const string TEMP_FILE="/tmp/blacklist.tmp";
-    
+    // 日志文件路径
+    string LOG_FILE="/var/log/nginx/wp.edu_access.log"; // 其他系统（如Linux）
+    #ifdef _WIN32
+        LOG_FILE = "./wp.edu_access.log"; // Windows系统
+    #endif
+    // 黑名单文件路径
+    const string BLACK_NGINX="./file/black_nginx.conf"; // nginx黑名单
+    const string BLACK_TEMP="./file/black_temp.conf"; // 临时黑名单
+    const string BLACK_TEMP2="./file/black_temp_2.conf"; // 临时黑名单-永久
+    // 临时文件路径
+    const string TEMP_FILE="/tmp/blacklist.tmp";
+
     vector<IPRecord> blackList = getIpList(LOG_FILE, TIME_RANGE); // 读取最近1分钟所有访问记录
-	blackList = findRecExceedLimit(blackList, VISIT_TIMES); // 统计待进入黑名单的列表
-	blackList = removePermanent(blackList, BLACK_TEMP2); // 剔除永久黑名单中的记录（无需处理）
-	addBlack(blackList, BLACK_NGINX, false); // 加入nginx黑名单
-	addBlackTemp(blackList, BLACK_TEMP); // 加入临时黑名单
-	
+    blackList = findRecExceedLimit(blackList, VISIT_TIMES); // 统计待进入黑名单的列表
+    blackList = removePermanent(blackList, BLACK_TEMP2); // 剔除永久黑名单中的记录（无需处理）
+    addBlack(blackList, BLACK_NGINX, false); // 加入nginx黑名单
+    addBlackTemp(blackList, BLACK_TEMP); // 加入临时黑名单
+
     // 每隔30分钟执行一次（加入永久黑名单）
     if (isMinStep(MIN_STEP)) {
-		blackList = getBlackPermenant(BLACK_TEMP); // 获取本次进入永久黑名单的记录
-    	addBlack(blackList, BLACK_TEMP2, true); // 加入永久黑名单
-		cutBlack(blackList, BLACK_TEMP); // 移除临时黑名单
-    	resetBlack(BLACK_NGINX, BLACK_TEMP, BLACK_TEMP2, MIN_STEP); // 重置nginx黑名单
+        blackList = getBlackPermenant(BLACK_TEMP); // 获取本次进入永久黑名单的记录
+        addBlack(blackList, BLACK_TEMP2, true); // 加入永久黑名单
+        cutBlack(blackList, BLACK_TEMP); // 移除临时黑名单
+        resetBlack(BLACK_NGINX, BLACK_TEMP, BLACK_TEMP2, MIN_STEP); // 重置nginx黑名单
     }
     return 0;
 }
