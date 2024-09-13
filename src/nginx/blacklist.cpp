@@ -497,13 +497,13 @@ int main() {
 	addBlack(blackList, BLACK_NGINX, false); // 加入nginx黑名单
 	addBlackTemp(blackList, BLACK_TEMP); // 加入临时黑名单
 	
-	// 每隔30分钟执行一次（加入永久黑名单）
-//	if (isMinStep(MIN_STEP)) {
+    // 每隔30分钟执行一次（加入永久黑名单）
+    if (isMinStep(MIN_STEP)) {
 		blackList = getBlackPermenant(BLACK_TEMP); // 获取本次进入永久黑名单的记录
     	addBlack(blackList, BLACK_TEMP2, true); // 加入永久黑名单
 		cutBlack(blackList, BLACK_TEMP); // 移除临时黑名单
     	resetBlack(BLACK_NGINX, BLACK_TEMP, BLACK_TEMP2, MIN_STEP); // 重置nginx黑名单
-//	}
+    }
     return 0;
 }
 
