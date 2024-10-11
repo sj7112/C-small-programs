@@ -348,7 +348,7 @@ void addBlack(vector<IPRecord>& ipList, string BLACKLIST, bool isFull) {
             if (isFull) {
                 outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入永久黑名单 
             } else {
-                outFile << black.ipAddress << endl; // 加入nginx黑名单 
+                outFile << black.ipAddress << " 1;" << endl; // 加入nginx黑名单 - geo（58.214.22.70 1;）
             }
         }
     }
@@ -419,7 +419,7 @@ void resetBlack(string BLACK_NGINX, string BLACK_TEMP, string BLACK_TEMP2, size_
     if (!outFile) handleError("Error opening temporary blacklist file: " + BLACK_NGINX); // 异常退出
 	// 循环遍历 ipSet 并写入到文件
     for (const string& ip : ipSet) {
-        outFile << ip << endl;
+        outFile << ip << " 1;" << endl; // 加入nginx黑名单 - geo（58.214.22.70 1;）
     }
     outFile.close();
 }
@@ -439,13 +439,15 @@ tm* getCurrentTime() {
 string printCurrentTime() {
 	// 获取当前时间点
     tm* currentTime = getCurrentTime();
-    return "Current time: "
-		+(currentTime->tm_year + 1900)+'-'
-		+(currentTime->tm_mon + 1)+'-'
-		+currentTime->tm_mday+' '
-		+currentTime->tm_hour+':'
-		+currentTime->tm_min+':'
-	    +currentTime->tm_sec+' ';
+    // 使用字符串流来构建时间字符串
+    std::ostringstream oss;
+    oss << (currentTime->tm_year + 1900) << '-' // 年
+        << (currentTime->tm_mon + 1) << '-'     // 月
+        << currentTime->tm_mday << ' '          // 日
+        << currentTime->tm_hour << ':'          // 时
+        << currentTime->tm_min << ':'           // 分
+        << currentTime->tm_sec << ' ';          // 秒
+    return oss.str(); // 返回构建的字符串    
 }
 
 // 是否符合分钟步长（目前为30分钟）
