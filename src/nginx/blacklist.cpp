@@ -424,14 +424,35 @@ void resetBlack(string BLACK_NGINX, string BLACK_TEMP, string BLACK_TEMP2, size_
     outFile.close();
 }
 
-// 是否符合分钟步长（目前为30分钟）
-bool isMinStep(size_t MIN_STEP) {
+// 获取当前时间
+tm* getCurrentTime() {
 	// 获取当前时间点
     auto now = chrono::system_clock::now();
     // 转换为time_t类型
     time_t currentTime = chrono::system_clock::to_time_t(now);
     // 转换为tm结构体
     tm* localTime = localtime(&currentTime);
+    return localTime;
+}
+
+// 是否符合分钟步长（目前为30分钟）
+void printCurrentTime() {
+	// 获取当前时间点
+    tm* localTime = getCurrentTime();
+    std::cout << "Current time: "
+              << (currentTime->tm_year + 1900) << '-'
+              << (currentTime->tm_mon + 1) << '-'
+              << currentTime->tm_mday << ' '
+              << currentTime->tm_hour << ':'
+              << currentTime->tm_min << ':'
+              << currentTime->tm_sec << '\n';
+    return 0;
+}
+
+// 是否符合分钟步长（目前为30分钟）
+bool isMinStep(size_t MIN_STEP) {
+	// 获取当前时间点
+    tm* localTime = getCurrentTime();
     // 获取分钟数
     int minutes = localTime->tm_min;
     // 判断分钟数是否为10的倍数
@@ -482,16 +503,19 @@ int main() {
     const size_t MIN_STEP = 30; // 每隔30分钟重算一次永久黑名单
     // 日志文件路径
     string LOG_FILE="/var/log/nginx/wp.edu_access.log"; // 其他系统（如Linux）
+    // 黑名单文件路径
+    string BLACK_NGINX="/etc/nginx/file/black_nginx.conf"; // nginx黑名单
+    string BLACK_TEMP="/etc/nginx/file/black_temp.conf"; // 临时黑名单
+    string BLACK_TEMP2="/etc/nginx/file/black_temp_2.conf"; // 临时黑名单-永久
     #ifdef _WIN32
         LOG_FILE = "./wp.edu_access.log"; // Windows系统
+        BLACK_NGINX = "./file/black_nginx.conf"; // nginx黑名单
+        BLACK_TEMP = "./file/black_temp.conf"; // 临时黑名单
+        BLACK_TEMP2 = "./file/black_temp_2.conf"; // 临时黑名单-永久
     #endif
-    // 黑名单文件路径
-    const string BLACK_NGINX="./file/black_nginx.conf"; // nginx黑名单
-    const string BLACK_TEMP="./file/black_temp.conf"; // 临时黑名单
-    const string BLACK_TEMP2="./file/black_temp_2.conf"; // 临时黑名单-永久
     // 临时文件路径
     const string TEMP_FILE="/tmp/blacklist.tmp";
-
+	  cout << printCurrentTime() << " blacklist check cycle starts" << endl; // 打印日志信息
     vector<IPRecord> blackList = getIpList(LOG_FILE, TIME_RANGE); // 读取最近1分钟所有访问记录
     blackList = findRecExceedLimit(blackList, VISIT_TIMES); // 统计待进入黑名单的列表
     blackList = removePermanent(blackList, BLACK_TEMP2); // 剔除永久黑名单中的记录（无需处理）
