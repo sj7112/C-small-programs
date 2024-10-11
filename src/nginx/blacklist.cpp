@@ -445,7 +445,7 @@ string printCurrentTime() {
 		+currentTime->tm_mday+' '
 		+currentTime->tm_hour+':'
 		+currentTime->tm_min+':'
-	    +currentTime->tm_sec+'\n';
+	    +currentTime->tm_sec+' ';
 }
 
 // 是否符合分钟步长（目前为30分钟）
@@ -514,7 +514,7 @@ int main() {
     #endif
     // 临时文件路径
     const string TEMP_FILE="/tmp/blacklist.tmp";
-	cout << printCurrentTime() << " blacklist check cycle starts" << endl; // 打印日志信息
+	cout << printCurrentTime() << "blacklist check cycle starts" << endl; // 打印日志信息
     vector<IPRecord> blackList = getIpList(LOG_FILE, TIME_RANGE); // 读取最近1分钟所有访问记录
     blackList = findRecExceedLimit(blackList, VISIT_TIMES); // 统计待进入黑名单的列表
     blackList = removePermanent(blackList, BLACK_TEMP2); // 剔除永久黑名单中的记录（无需处理）
