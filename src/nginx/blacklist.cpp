@@ -204,7 +204,7 @@ IPRecord getLineIpRecord(string line) {
     return record;
 }
 
-// 找最近60秒内访问次数最多，且超过黑名单次数下限的IP地址（返回序号idx） 
+// 找最近360秒内访问次数最多，且超过黑名单次数下限的IP地址（返回序号idx） 
 vector<IPRecord> getIpList(string LOG_FILE, const int timecount) {
     vector<IPRecord> ipList; // 数组，格式类似{"192.168.1.1", "03/Sep/2024:14:05:16 +0800", 5} 
 
@@ -245,7 +245,7 @@ vector<IPRecord> getIpList(string LOG_FILE, const int timecount) {
 	    	string ipAddress = line.substr(0, ipEnd);
 	    	time_t opTime = parseTimeLogFile(line.substr(timeStart + 1, timeEnd - timeStart - 1));
 	    	if (cutoffTime == 0) {
-				cutoffTime = opTime - timecount; // 初始化截至时间
+				cutoffTime = opTime - timecount; // 初始化截至时间（以最后一条日志记录的时间，作为截止时间） 
 			} else if (opTime < cutoffTime) {
 				finished = true;
 				break;
@@ -346,7 +346,8 @@ void addBlack(vector<IPRecord>& ipList, string BLACKLIST, bool isFull) {
     for (IPRecord black : ipList) {
         if (ipSet.find(black.ipAddress) == ipSet.end()) {
             if (isFull) {
-                outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入永久黑名单 
+                outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入永久黑名单
+    	        cout << "TEST! Add to black_temp_2.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 测试代码！打印进入永久黑名单的
             } else {
                 outFile << black.ipAddress << " 1;" << endl; // 加入nginx黑名单 - geo（58.214.22.70 1;）
             }
@@ -361,7 +362,8 @@ void addBlackTemp(const vector<IPRecord>& ipList, string BLACKLIST) {
     if (!outFile) handleError("Error opening temporary blacklist file: " + BLACKLIST); // 异常退出
 
     for (IPRecord black : ipList) {
-    	outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入临时黑名单 
+    	outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入临时黑名单
+    	cout << "TEST! Add to black_temp.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 测试代码！打印进入临时黑名单的 
 	}
     outFile.close();
 }
@@ -397,10 +399,16 @@ void cutBlack(vector<IPRecord>& ipList, string BLACKLIST) {
     if (!outFile) handleError("Error opening temporary blacklist file: " + BLACKLIST); // 异常退出
     
     for (IPRecord black : ipList) {
-	    if (dateDiff(black.opTime) >= BLACK_DAYS) continue; // 如果时间差大于7天，剔除此记录
-    	if (ipSet.find(black.ipAddress) != ipSet.end()) continue; // 剔除本次转永久黑名单的记录
-    	outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入临时黑名单 
-	}
+	    if (dateDiff(black.opTime) >= BLACK_DAYS) {
+    	    cout << "TEST! Remove(7day) black_temp.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 测试代码！打印退出临时黑名单的（超过7天） 
+	        continue; // 如果时间差大于7天，剔除此记录
+	    }
+	    if (ipSet.find(black.ipAddress) != ipSet.end()) {
+    	    cout << "TEST! Remove(perm) black_temp.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 测试代码！打印退出永久黑名单的（转为永久） 
+	        continue; // 剔除本次转永久黑名单的记录
+	    }
+	    outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // 加入临时黑名单 
+    }
     outFile.close();
 }
 
@@ -491,7 +499,7 @@ vector<IPRecord> getBlackPermenant(string BLACK_TEMP) {
 
 /**
  * 临时黑名单逻辑：
- * 1）每3分钟（180秒）超过1500次访问记录，会被加入到临时黑名单BLACK_TEMP [IP 时间戳 次数]
+ * 1）每6分钟（360秒）超过2600次访问记录，会被加入到临时黑名单BLACK_TEMP [IP 时间戳 次数]
  * 2）7天内至少6次被列入黑名单，会被加入到永久黑名单BLACK_TEMP2 
  * @param file 待处理文件 
  * @param endPos 结束指针位置 
@@ -499,8 +507,8 @@ vector<IPRecord> getBlackPermenant(string BLACK_TEMP) {
  * @return pair<vector<string>, streampos> 读取结果列表 | 新指针位置 
  */
 int main() {
-    const size_t TIME_RANGE = 180; // 一次判断180秒内的日志 
-    const size_t VISIT_TIMES = 1500; // 必须每3分钟超过1500次访问，才会被放进黑名单
+    const size_t TIME_RANGE = 360; // 一次判断6分钟360秒内的日志 
+    const size_t VISIT_TIMES = 2600; // 必须每6分钟超过2600次访问，才会被放进黑名单
     const size_t MIN_STEP = 30; // 每隔30分钟重算一次永久黑名单
     // 日志文件路径
     string LOG_FILE="/var/log/nginx/wp.edu_access.log"; // 其他系统（如Linux）
@@ -509,7 +517,7 @@ int main() {
     string BLACK_TEMP="/etc/nginx/file/black_temp.conf"; // 临时黑名单
     string BLACK_TEMP2="/etc/nginx/file/black_temp_2.conf"; // 临时黑名单-永久
     #ifdef _WIN32
-        LOG_FILE = "./wp.edu_access.log"; // Windows系统
+        LOG_FILE = "./file/wp.edu_access.log"; // Windows系统
         BLACK_NGINX = "./file/black_nginx.conf"; // nginx黑名单
         BLACK_TEMP = "./file/black_temp.conf"; // 临时黑名单
         BLACK_TEMP2 = "./file/black_temp_2.conf"; // 临时黑名单-永久
@@ -517,7 +525,7 @@ int main() {
     // 临时文件路径
     const string TEMP_FILE="/tmp/blacklist.tmp";
 	cout << printCurrentTime() << "blacklist check cycle starts" << endl; // 打印日志信息
-    vector<IPRecord> blackList = getIpList(LOG_FILE, TIME_RANGE); // 读取最近1分钟所有访问记录
+    vector<IPRecord> blackList = getIpList(LOG_FILE, TIME_RANGE); // 读取最近6分钟所有访问记录
     blackList = findRecExceedLimit(blackList, VISIT_TIMES); // 统计待进入黑名单的列表
     blackList = removePermanent(blackList, BLACK_TEMP2); // 剔除永久黑名单中的记录（无需处理）
     addBlack(blackList, BLACK_NGINX, false); // 加入nginx黑名单
