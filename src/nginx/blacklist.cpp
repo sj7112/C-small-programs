@@ -1,99 +1,101 @@
-#include <iostream>
+#include <algorithm>  // For std::reverse
+#include <chrono>
+#include <ctime>
 #include <fstream>
-#include <vector>
+#include <iomanip>
+#include <iostream>
+#include <map>  // å¼•å…¥mapå¤´æ–‡ä»¶
+#include <sstream>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <string>
-#include <sstream>
-#include <iomanip>
-#include <ctime>
-#include <chrono>
-#include <map> // ÒıÈëmapÍ·ÎÄ¼ş
-#include <utility> // For std::pair
-#include <algorithm> // For std::reverse
+#include <utility>  // For std::pair
+#include <vector>
 
 using namespace std;
 
-// centos7 /etc/nginxÄ¿Â¼ÏÂ£¬Ö´ĞĞ£ºg++ -std=c++11 -o blacklist blacklist.cpp
+// centos7 /etc/nginxç›®å½•ä¸‹ï¼Œæ‰§è¡Œï¼šg++ -std=c++11 -o blacklist blacklist.cpp
 
-// ²âÊÔ¹¤¾ßÀà£º¶ÁÈ¡char*Ö¸¶¨Î»ÖÃµÄÊı¾İ 
-void readRangeFromBuffer(const char* buffer, size_t start, size_t end, const size_t BUFFER_SIZE = 4096) {
-    // È·±£ÆğÊ¼µãºÍÖÕµã²»»á³¬³öÊı×é±ß½ç
+// æµ‹è¯•å·¥å…·ç±»ï¼šè¯»å–char*æŒ‡å®šä½ç½®çš„æ•°æ®
+void readRangeFromBuffer(const char* buffer, size_t start, size_t end,
+                         const size_t BUFFER_SIZE = 4096) {
+    // ç¡®ä¿èµ·å§‹ç‚¹å’Œç»ˆç‚¹ä¸ä¼šè¶…å‡ºæ•°ç»„è¾¹ç•Œ
     if (start >= BUFFER_SIZE || end >= BUFFER_SIZE || start > end) {
         cerr << "Start or end position is out of bounds or invalid." << endl;
         return;
     }
-    size_t length = end - start + 1; // ¼ÆËãÊµ¼Ê¶ÁÈ¡µÄ³¤¶È
-    string result(buffer + start, length); // ÌáÈ¡×Ó×Ö·û´®
-    cout << result << endl; // Êä³ö½á¹û
+    size_t length = end - start + 1;        // è®¡ç®—å®é™…è¯»å–çš„é•¿åº¦
+    string result(buffer + start, length);  // æå–å­å­—ç¬¦ä¸²
+    cout << result << endl;                 // è¾“å‡ºç»“æœ
 }
 
 /**
- * ½«ÁÙÊ±½á¹ûÌí¼Óµ½linesµÄÄ©Î²£¨ÓÃÔÚÎÄ¼şÄæĞò¶ÁÈ¡£© 
- * @param lines Ìí¼ÓÁĞ±í 
- * @param tempLine ´ıÌí¼ÓµÄ×Ö·û´®
- * @param newLine true£ºĞÂÔöÒ»ĞĞ£»false£ºÌí¼Óµ½×îºóÒ»ĞĞ
+ * å°†ä¸´æ—¶ç»“æœæ·»åŠ åˆ°linesçš„æœ«å°¾ï¼ˆç”¨åœ¨æ–‡ä»¶é€†åºè¯»å–ï¼‰
+ * @param lines æ·»åŠ åˆ—è¡¨
+ * @param tempLine å¾…æ·»åŠ çš„å­—ç¬¦ä¸²
+ * @param newLine trueï¼šæ–°å¢ä¸€è¡Œï¼›falseï¼šæ·»åŠ åˆ°æœ€åä¸€è¡Œ
  * @return
  */
 void getlineReverse(vector<string>& lines, string& tempLine, bool newLine) {
-	string str = string(tempLine.rbegin(), tempLine.rend()); // Äæ×ªË³Ğò
-	tempLine.clear(); // Çå¿ÕÁÙÊ±Êı¾İ 
-	if (newLine) {
-		lines.push_back(str); // ĞÂÔöÒ»ĞĞ 
-	} else {
-		lines[lines.size()-1] = str + lines[lines.size()-1]; // Ìí¼Óµ½×îºóÒ»ĞĞ
-	}
+    string str = string(tempLine.rbegin(), tempLine.rend());  // é€†è½¬é¡ºåº
+    tempLine.clear();                                         // æ¸…ç©ºä¸´æ—¶æ•°æ®
+    if (newLine) {
+        lines.push_back(str);  // æ–°å¢ä¸€è¡Œ
+    } else {
+        lines[lines.size() - 1] =
+            str + lines[lines.size() - 1];  // æ·»åŠ åˆ°æœ€åä¸€è¡Œ
+    }
 }
 
 /**
- * ½«×Ö·û´®×ªÎªÊ±¼ä´Á£¨nginxÄ¬ÈÏÈÕÖ¾ÎÄ¼ş£©
- * @param timeStr ÈÕÆÚ¸ñÊ½£¬ÀıÈç£º03/Sep/2024:14:05:03 +0800
- * @return time_t Ê±¼ä´Á£¬´Ó1970Äê1ÔÂ1ÈÕ00Ê±00·Ö00Ãë£¨¸ñÁÖÍşÖÎÊ±¼ä£©ÖÁÏÖÔÚµÄ×ÜÃëÊı 
+ * å°†å­—ç¬¦ä¸²è½¬ä¸ºæ—¶é—´æˆ³ï¼ˆnginxé»˜è®¤æ—¥å¿—æ–‡ä»¶ï¼‰
+ * @param timeStr æ—¥æœŸæ ¼å¼ï¼Œä¾‹å¦‚ï¼š03/Sep/2024:14:05:03 +0800
+ * @return time_t
+ * æ—¶é—´æˆ³ï¼Œä»1970å¹´1æœˆ1æ—¥00æ—¶00åˆ†00ç§’ï¼ˆæ ¼æ—å¨æ²»æ—¶é—´ï¼‰è‡³ç°åœ¨çš„æ€»ç§’æ•°
  */
 time_t parseTimeLogFile(const string& timeStr) {
-	// ÔÂ·İËõĞ´×ª»»ÎªÔÂ·İË÷Òı£¨0 ~ 11£©
+    // æœˆä»½ç¼©å†™è½¬æ¢ä¸ºæœˆä»½ç´¢å¼•ï¼ˆ0 ~ 11ï¼‰
     static unordered_map<string, int> monthMap = {
-        {"Jan", 0}, {"Feb", 1}, {"Mar", 2}, {"Apr", 3},
-        {"May", 4}, {"Jun", 5}, {"Jul", 6}, {"Aug", 7},
-        {"Sep", 8}, {"Oct", 9}, {"Nov", 10}, {"Dec", 11}
-    };
- 
+        {"Jan", 0}, {"Feb", 1}, {"Mar", 2},  {"Apr", 3},
+        {"May", 4}, {"Jun", 5}, {"Jul", 6},  {"Aug", 7},
+        {"Sep", 8}, {"Oct", 9}, {"Nov", 10}, {"Dec", 11}};
+
     // Parse the time string
     struct tm tm = {};
     istringstream ss(timeStr);
-    
+
     // Manually parse the date and time part
     string dateTime;
     getline(ss, dateTime, ' ');  // Extract the date/time part before the space
-    
+
     // Convert dateTime to tm structure
-    string month; 
+    string month;
     stringstream dateTimeStream(dateTime);
-    dateTimeStream >> setw(2) >> tm.tm_mday; // Day
-    dateTimeStream.ignore(1); // Skip '/'
+    dateTimeStream >> setw(2) >> tm.tm_mday;  // Day
+    dateTimeStream.ignore(1);                 // Skip '/'
     dateTimeStream >> setw(3) >> month;
-    tm.tm_mon = monthMap.find(month)->second; // Month
-    dateTimeStream.ignore(1); // Skip '/'
-    dateTimeStream >> setw(4) >> tm.tm_year; // Year
-    tm.tm_year -= 1900; // Years since 1900
-    
+    tm.tm_mon = monthMap.find(month)->second;  // Month
+    dateTimeStream.ignore(1);                  // Skip '/'
+    dateTimeStream >> setw(4) >> tm.tm_year;   // Year
+    tm.tm_year -= 1900;                        // Years since 1900
+
     char colon;
-    dateTimeStream >> colon >> tm.tm_hour; // Hours
-    dateTimeStream >> colon >> tm.tm_min; // Minutes
-    dateTimeStream >> colon >> tm.tm_sec; // Seconds
-    
+    dateTimeStream >> colon >> tm.tm_hour;  // Hours
+    dateTimeStream >> colon >> tm.tm_min;   // Minutes
+    dateTimeStream >> colon >> tm.tm_sec;   // Seconds
+
     // Read timezone part and ignore
-//    string timezone;
-//    ss >> timezone;
-    
+    //    string timezone;
+    //    ss >> timezone;
+
     // Convert to time_t
     return mktime(&tm);
 }
 
 /**
- * ÎÄ¼şË³Ğò¶ÁÈ¡£º¸øµ½ÎÄ¼ş£¬Ë³Ğò¶ÁÈ¡ËùÓĞµÄĞĞ
- * @param file ´ı´¦ÀíÎÄ¼ş
- * @return vector<string> ¶ÁÈ¡½á¹ûÁĞ±í
+ * æ–‡ä»¶é¡ºåºè¯»å–ï¼šç»™åˆ°æ–‡ä»¶ï¼Œé¡ºåºè¯»å–æ‰€æœ‰çš„è¡Œ
+ * @param file å¾…å¤„ç†æ–‡ä»¶
+ * @return vector<string> è¯»å–ç»“æœåˆ—è¡¨
  */
 vector<string> readLines(ifstream& file) {
     vector<string> lines;
@@ -104,19 +106,20 @@ vector<string> readLines(ifstream& file) {
     while (getline(file, line)) {
         lines.push_back(line);
     }
-    // »ñÈ¡µ±Ç°ÎÄ¼şÖ¸ÕëÎ»ÖÃ£¬¼´¶ÁÍêÖ¸¶¨ĞĞºóµÄÏÂÒ»ĞĞÆğÊ¼Î»ÖÃ
+    // è·å–å½“å‰æ–‡ä»¶æŒ‡é’ˆä½ç½®ï¼Œå³è¯»å®ŒæŒ‡å®šè¡Œåçš„ä¸‹ä¸€è¡Œèµ·å§‹ä½ç½®
     streampos currentPos = file.tellg();
     return lines;
 }
 
 /**
- * ÎÄ¼şË³Ğò¶ÁÈ¡£º¸øµ½ÎÄ¼şµÄÆğÊ¼Î»ÖÃ£¬Ë³Ğò¶ÁÈ¡Ö¸¶¨ÊıÁ¿µÄĞĞ
- * @param file ´ı´¦ÀíÎÄ¼ş 
- * @param startPos ÆğÊ¼Ö¸ÕëÎ»ÖÃ 
- * @param numLines ¶ÁÈ¡ĞĞÊı 
- * @return pair<vector<string>, streampos> ¶ÁÈ¡½á¹ûÁĞ±í | ĞÂÖ¸ÕëÎ»ÖÃ 
+ * æ–‡ä»¶é¡ºåºè¯»å–ï¼šç»™åˆ°æ–‡ä»¶çš„èµ·å§‹ä½ç½®ï¼Œé¡ºåºè¯»å–æŒ‡å®šæ•°é‡çš„è¡Œ
+ * @param file å¾…å¤„ç†æ–‡ä»¶
+ * @param startPos èµ·å§‹æŒ‡é’ˆä½ç½®
+ * @param numLines è¯»å–è¡Œæ•°
+ * @return pair<vector<string>, streampos> è¯»å–ç»“æœåˆ—è¡¨ | æ–°æŒ‡é’ˆä½ç½®
  */
-pair<vector<string>, streampos> readLines(ifstream& file, streampos startPos, size_t numLines) {
+pair<vector<string>, streampos> readLines(ifstream& file, streampos startPos,
+                                          size_t numLines) {
     vector<string> lines;
 
     file.seekg(startPos);
@@ -127,417 +130,471 @@ pair<vector<string>, streampos> readLines(ifstream& file, streampos startPos, si
         lines.push_back(line);
         count++;
     }
-    // »ñÈ¡µ±Ç°ÎÄ¼şÖ¸ÕëÎ»ÖÃ£¬¼´¶ÁÍêÖ¸¶¨ĞĞºóµÄÏÂÒ»ĞĞÆğÊ¼Î»ÖÃ
+    // è·å–å½“å‰æ–‡ä»¶æŒ‡é’ˆä½ç½®ï¼Œå³è¯»å®ŒæŒ‡å®šè¡Œåçš„ä¸‹ä¸€è¡Œèµ·å§‹ä½ç½®
     streampos currentPos = file.tellg();
     return {lines, currentPos};
 }
 
 /**
- * ÎÄ¼şÄæĞò¶ÁÈ¡£º¸øµ½ÎÄ¼şµÄ½áÊøÎ»ÖÃ£¬ÄæĞò¶ÁÈ¡Ö¸¶¨ÊıÁ¿µÄĞĞ
- * @param file ´ı´¦ÀíÎÄ¼ş 
- * @param endPos ½áÊøÖ¸ÕëÎ»ÖÃ 
- * @param numLines ¶ÁÈ¡ĞĞÊı 
- * @return pair<vector<string>, streampos> ¶ÁÈ¡½á¹ûÁĞ±í | ĞÂÖ¸ÕëÎ»ÖÃ 
+ * æ–‡ä»¶é€†åºè¯»å–ï¼šç»™åˆ°æ–‡ä»¶çš„ç»“æŸä½ç½®ï¼Œé€†åºè¯»å–æŒ‡å®šæ•°é‡çš„è¡Œ
+ * @param file å¾…å¤„ç†æ–‡ä»¶
+ * @param endPos ç»“æŸæŒ‡é’ˆä½ç½®
+ * @param numLines è¯»å–è¡Œæ•°
+ * @return pair<vector<string>, streampos> è¯»å–ç»“æœåˆ—è¡¨ | æ–°æŒ‡é’ˆä½ç½®
  */
-pair<vector<string>, streampos> readLinesReverse(ifstream& file, streampos endPos, size_t numLines) {
-    const size_t BUFFER_SIZE = 4096; // ¶ÁÈ¡µÄÊı¾İ¿é´óĞ¡
+pair<vector<string>, streampos> readLinesReverse(ifstream& file,
+                                                 streampos endPos,
+                                                 size_t numLines) {
+    const size_t BUFFER_SIZE = 4096;  // è¯»å–çš„æ•°æ®å—å¤§å°
     char bufferArray[BUFFER_SIZE];
     vector<string> lines;
     streampos pos = endPos;
-    size_t linesRead = 0; // ÒÑ¶ÁĞĞÊı£¨¿ÉÄÜ»á±ÈlinesFinished¶à1ĞĞ£© 
-    size_t linesFinished = 0; // ÒÑĞ´ÈëĞĞÊı£¨\n½áÎ²£© 
+    size_t linesRead = 0;      // å·²è¯»è¡Œæ•°ï¼ˆå¯èƒ½ä¼šæ¯”linesFinishedå¤š1è¡Œï¼‰
+    size_t linesFinished = 0;  // å·²å†™å…¥è¡Œæ•°ï¼ˆ\nç»“å°¾ï¼‰
 
     while (pos > 0 && linesFinished < numLines) {
-        size_t bytesToRead = min(static_cast<streampos>(BUFFER_SIZE), pos); // 1 ~ posµÄ×Ü³¤¶È vs. 4096£¬Á½ÕßÈ¡Ğ¡
-        pos -= bytesToRead; // posÍùÇ°ÒÆ¶¯´ı¶ÁÈ¡×Ö·ûÊıÁ¿
-        file.seekg(pos); // ÎÄ¼şËæ»ú¶ÁÈ¡µÄ³õÊ¼¶¨Î»
-        file.read(bufferArray, bytesToRead); // Ò»´ÎĞÔ¶ÁÈ¡
+        size_t bytesToRead = min(static_cast<streampos>(BUFFER_SIZE),
+                                 pos);  // 1 ~ posçš„æ€»é•¿åº¦ vs. 4096ï¼Œä¸¤è€…å–å°
+        pos -= bytesToRead;             // poså¾€å‰ç§»åŠ¨å¾…è¯»å–å­—ç¬¦æ•°é‡
+        file.seekg(pos);                // æ–‡ä»¶éšæœºè¯»å–çš„åˆå§‹å®šä½
+        file.read(bufferArray, bytesToRead);  // ä¸€æ¬¡æ€§è¯»å–
 
-        // ´¦Àí¶ÁÈ¡µÄÊı¾İ
-        string tempLine; // ÁÙÊ±ĞĞÄÚÈİ£¨ÄæĞòĞ´Èë£© 
+        // å¤„ç†è¯»å–çš„æ•°æ®
+        string tempLine;  // ä¸´æ—¶è¡Œå†…å®¹ï¼ˆé€†åºå†™å…¥ï¼‰
         for (size_t i = bytesToRead; i > 0; --i) {
             if (bufferArray[i - 1] == '\n' || bufferArray[i - 1] == '\r') {
-            	// Óöµ½windowsµÄ\r£¬Ìø¹ı´¦ÀíÏÂÒ»¸ö×Ö·û\n£¨linuxÎª'\n'£¬windowsÎª'\r\n'£¬ÌØÊâÇé¿öÈç¾É°æMacOSÎª'\r'£© 
-            	if (bufferArray[i - 1] == '\r' && i - 1 > 0 && bufferArray[i - 2] == '\n') continue; // \r\n×Ô¶¯Ìø¹ı\r 
+                // é‡åˆ°windowsçš„\rï¼Œè·³è¿‡å¤„ç†ä¸‹ä¸€ä¸ªå­—ç¬¦\nï¼ˆlinuxä¸º'\n'ï¼Œwindowsä¸º'\r\n'ï¼Œç‰¹æ®Šæƒ…å†µå¦‚æ—§ç‰ˆMacOSä¸º'\r'ï¼‰
+                if (bufferArray[i - 1] == '\r' && i - 1 > 0 &&
+                    bufferArray[i - 2] == '\n')
+                    continue;  // \r\nè‡ªåŠ¨è·³è¿‡\r
                 if (!tempLine.empty()) {
-                    // ·´Ïò¶ÁÈ¡µÄÃ¿ĞĞ¶¼ĞèÒªÄæĞò²åÈë
+                    // åå‘è¯»å–çš„æ¯è¡Œéƒ½éœ€è¦é€†åºæ’å…¥
                     bool newLine = linesRead == linesFinished;
-                	getlineReverse(lines, tempLine, newLine); 
-                    if (newLine) ++linesRead; // ÒÑ¶ÁÈ¡µÄĞĞÊı 						
-                    ++linesFinished; // ÒÑÍê³ÉµÄĞĞÊı 
+                    getlineReverse(lines, tempLine, newLine);
+                    if (newLine) ++linesRead;  // å·²è¯»å–çš„è¡Œæ•°
+                    ++linesFinished;           // å·²å®Œæˆçš„è¡Œæ•°
                 }
                 if (linesFinished >= numLines) {
-                	pos += (i - 1); // ¼õÈ¥Î´¶ÁÊıÁ¿£¨ÏÂ´Î´Ó´Ë´¦ÖØĞÂ¶ÁÈ¡£© 
-                    break; // Ò»´Î×î¶à¶ÁÈ¡¶àÉÙĞĞ£¨Ä¬ÈÏ = 1000£© 
+                    pos += (i - 1);  // å‡å»æœªè¯»æ•°é‡ï¼ˆä¸‹æ¬¡ä»æ­¤å¤„é‡æ–°è¯»å–ï¼‰
+                    break;           // ä¸€æ¬¡æœ€å¤šè¯»å–å¤šå°‘è¡Œï¼ˆé»˜è®¤ = 1000ï¼‰
                 }
             } else {
-                tempLine += bufferArray[i - 1]; // ×Ö·û´®×é×° 
+                tempLine += bufferArray[i - 1];  // å­—ç¬¦ä¸²ç»„è£…
             }
         }
-        // Èç¹û×îºóÃ»ÓĞÕÒµ½»»ĞĞ·û£¬»¹ĞèÒª´¦ÀíÊ£ÓàµÄĞĞ
+        // å¦‚æœæœ€åæ²¡æœ‰æ‰¾åˆ°æ¢è¡Œç¬¦ï¼Œè¿˜éœ€è¦å¤„ç†å‰©ä½™çš„è¡Œ
         if (linesRead < numLines && !tempLine.empty()) {
-            bool newLine = linesRead == linesFinished; // ÌØÊâ´¦Àí£ºÒ»ĞĞ¿ÉÄÜÔ¶´óÓÚ4096×Ö½Ú 
-        	getlineReverse(lines, tempLine, newLine);
+            bool newLine =
+                linesRead == linesFinished;  // ç‰¹æ®Šå¤„ç†ï¼šä¸€è¡Œå¯èƒ½è¿œå¤§äº4096å­—èŠ‚
+            getlineReverse(lines, tempLine, newLine);
             ++linesRead;
         }
     }
-    // ·´×ª½á¹û£¬ÒÔ±ã´ÓÎÄ¼şÄ©Î²µ½ÎÄ¼ş¿ªÍ·µÄË³Ğò
+    // åè½¬ç»“æœï¼Œä»¥ä¾¿ä»æ–‡ä»¶æœ«å°¾åˆ°æ–‡ä»¶å¼€å¤´çš„é¡ºåº
     reverse(lines.begin(), lines.end());
     return make_pair(lines, pos);
 }
 
-// ¶¨Òå½á¹¹Ìå
+// å®šä¹‰ç»“æ„ä½“
 struct IPRecord {
-    string ipAddress;  // IP µØÖ·
-    time_t opTime;  // Ê±¼ä´Á
-    unsigned int count; // ¼ÆÊıÆ÷
+    string ipAddress;    // IP åœ°å€
+    time_t opTime;       // æ—¶é—´æˆ³
+    unsigned int count;  // è®¡æ•°å™¨
 };
 
 /**
- * °ÑÒ»ĞĞstring×ªÎªIPRecord£¬Ê±¼äÎªÊ±¼ä´Á¸ñÊ½ 
+ * æŠŠä¸€è¡Œstringè½¬ä¸ºIPRecordï¼Œæ—¶é—´ä¸ºæ—¶é—´æˆ³æ ¼å¼
  */
 IPRecord getLineIpRecord(string line) {
     IPRecord record;
     istringstream iss(line);
-    // ´ÓÊäÈëÁ÷ÖĞÌáÈ¡IPµØÖ·¡¢Ê±¼ä´ÁºÍ·ÃÎÊ´ÎÊı
+    // ä»è¾“å…¥æµä¸­æå–IPåœ°å€ã€æ—¶é—´æˆ³å’Œè®¿é—®æ¬¡æ•°
     iss >> record.ipAddress >> record.opTime >> record.count;
     return record;
 }
 
-// ÕÒ×î½ü360ÃëÄÚ·ÃÎÊ´ÎÊı×î¶à£¬ÇÒ³¬¹ıºÚÃûµ¥´ÎÊıÏÂÏŞµÄIPµØÖ·£¨·µ»ØĞòºÅidx£© 
+// æ‰¾æœ€è¿‘360ç§’å†…è®¿é—®æ¬¡æ•°æœ€å¤šï¼Œä¸”è¶…è¿‡é»‘åå•æ¬¡æ•°ä¸‹é™çš„IPåœ°å€ï¼ˆè¿”å›åºå·idxï¼‰
 vector<IPRecord> getIpList(string LOG_FILE, const int timecount) {
-    vector<IPRecord> ipList; // Êı×é£¬¸ñÊ½ÀàËÆ{"192.168.1.1", "03/Sep/2024:14:05:16 +0800", 5} 
+    vector<IPRecord> ipList;  // æ•°ç»„ï¼Œæ ¼å¼ç±»ä¼¼{"192.168.1.1",
+                              // "03/Sep/2024:14:05:16 +0800", 5}
 
-    // ¶ÁÈ¡ÈÕÖ¾ÎÄ¼ş
+    // è¯»å–æ—¥å¿—æ–‡ä»¶
     ifstream logFile(LOG_FILE.c_str());
     if (!logFile) {
         cerr << "Error opening log file: " << LOG_FILE << endl;
-        return ipList; // ·µ»Ø¿ÕÊı×é 
+        return ipList;  // è¿”å›ç©ºæ•°ç»„
     }
 
-    // ÒÆ¶¯ÎÄ¼şÖ¸Õëµ½ÎÄ¼şÄ©Î²
+    // ç§»åŠ¨æ–‡ä»¶æŒ‡é’ˆåˆ°æ–‡ä»¶æœ«å°¾
     logFile.seekg(-1, ios::end);
-    streampos endPos = logFile.tellg(); // ³õÊ¼»¯ÉèÖÃ 
+    streampos endPos = logFile.tellg();  // åˆå§‹åŒ–è®¾ç½®
 
-    // Ê¾Àı¶ÁÈ¡ºÍĞ´Èë²Ù×÷
-    unordered_map<string, unsigned int> ipMap; // map£¬key = IPµØÖ·£»value = vectorÖĞĞòºÅ£¬ÀàËÆ{key:"192.168.1.1", value:0} 
-    
+    // ç¤ºä¾‹è¯»å–å’Œå†™å…¥æ“ä½œ
+    unordered_map<string, unsigned int>
+        ipMap;  // mapï¼Œkey = IPåœ°å€ï¼›value =
+                // vectorä¸­åºå·ï¼Œç±»ä¼¼{key:"192.168.1.1", value:0}
+
     const int numLines = 1000;
-	bool finished = false;
-	time_t cutoffTime = 0; // ±ØĞëÉè³õÖµ£¬·ñÔò = 11927552£¨Tue May 19 1970 09:12:32 GMT+0800£© 
-	while (!finished) {
-		auto result = readLinesReverse(logFile, endPos, numLines);
-		vector<string> lines = result.first;
-		if (lines.size() == 0) break; // ÎŞÊı¾İÔòÖÕÖ¹ 
-    	endPos = result.second; // Ã¿´Î×Ô¶¯ÖØÖÃ 
+    bool finished = false;
+    time_t cutoffTime =
+        0;  // å¿…é¡»è®¾åˆå€¼ï¼Œå¦åˆ™ = 11927552ï¼ˆTue May 19 1970 09:12:32 GMT+0800ï¼‰
+    while (!finished) {
+        auto result = readLinesReverse(logFile, endPos, numLines);
+        vector<string> lines = result.first;
+        if (lines.size() == 0) break;  // æ— æ•°æ®åˆ™ç»ˆæ­¢
+        endPos = result.second;        // æ¯æ¬¡è‡ªåŠ¨é‡ç½®
 
-    	// Êä³ö¶ÁÈ¡µÄĞĞ
-	    for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
-	    	string line = *it; // ½âÒıÓÃµü´úÆ÷ÒÔ»ñÈ¡×Ö·û´®
-	    	size_t ipEnd = line.find(' ');
-	    	size_t timeStart = line.find('[', ipEnd);
-	    	size_t timeEnd = line.find(']', timeStart);
-	    	if (ipEnd == string::npos || timeStart == string::npos || timeEnd == string::npos) {
-	    		cout << "String FORMAT ERROR: " << line << endl;
-				continue; // Òì³£´¦Àí
-			}
-	    	// ipµØÖ· 
-	    	string ipAddress = line.substr(0, ipEnd);
-	    	time_t opTime = parseTimeLogFile(line.substr(timeStart + 1, timeEnd - timeStart - 1));
-	    	if (cutoffTime == 0) {
-				cutoffTime = opTime - timecount; // ³õÊ¼»¯½ØÖÁÊ±¼ä£¨ÒÔ×îºóÒ»ÌõÈÕÖ¾¼ÇÂ¼µÄÊ±¼ä£¬×÷Îª½ØÖ¹Ê±¼ä£© 
-			} else if (opTime < cutoffTime) {
-				finished = true;
-				break;
-			}
-			// Éú³ÉipListºÍipMap
-			auto itm = ipMap.find(ipAddress);
-		    // ¼ì²é ipAddress ÊÇ·ñ´æÔÚÓÚ ipMap ÖĞ
-		    if (itm == ipMap.end()) {
-		    	// ¼ü²»´æÔÚ£¬²åÈëĞÂÊı¾İ£¬²¹³ä¼üÖµ¶Ô
-		    	ipList.push_back({ipAddress, opTime, 1});
-		        ipMap[ipAddress] = ipList.size() - 1;
-		    } else {
-		    	// ¼ü´æÔÚ£¬¼ÆÊıÆ÷ + 1 
-		    	auto& entry = ipList[itm->second];
-    			entry.count++; // ĞŞ¸Äcount
-		    }
-	    }
-	}
-    // ¹Ø±ÕÎÄ¼ş
+        // è¾“å‡ºè¯»å–çš„è¡Œ
+        for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
+            string line = *it;  // è§£å¼•ç”¨è¿­ä»£å™¨ä»¥è·å–å­—ç¬¦ä¸²
+            size_t ipEnd = line.find(' ');
+            size_t timeStart = line.find('[', ipEnd);
+            size_t timeEnd = line.find(']', timeStart);
+            if (ipEnd == string::npos || timeStart == string::npos ||
+                timeEnd == string::npos) {
+                cout << "String FORMAT ERROR: " << line << endl;
+                continue;  // å¼‚å¸¸å¤„ç†
+            }
+            // ipåœ°å€
+            string ipAddress = line.substr(0, ipEnd);
+            time_t opTime = parseTimeLogFile(
+                line.substr(timeStart + 1, timeEnd - timeStart - 1));
+            if (cutoffTime == 0) {
+                cutoffTime =
+                    opTime -
+                    timecount;  // åˆå§‹åŒ–æˆªè‡³æ—¶é—´ï¼ˆä»¥æœ€åä¸€æ¡æ—¥å¿—è®°å½•çš„æ—¶é—´ï¼Œä½œä¸ºæˆªæ­¢æ—¶é—´ï¼‰
+            } else if (opTime < cutoffTime) {
+                finished = true;
+                break;
+            }
+            // ç”ŸæˆipListå’ŒipMap
+            auto itm = ipMap.find(ipAddress);
+            // æ£€æŸ¥ ipAddress æ˜¯å¦å­˜åœ¨äº ipMap ä¸­
+            if (itm == ipMap.end()) {
+                // é”®ä¸å­˜åœ¨ï¼Œæ’å…¥æ–°æ•°æ®ï¼Œè¡¥å……é”®å€¼å¯¹
+                ipList.push_back({ipAddress, opTime, 1});
+                ipMap[ipAddress] = ipList.size() - 1;
+            } else {
+                // é”®å­˜åœ¨ï¼Œè®¡æ•°å™¨ + 1
+                auto& entry = ipList[itm->second];
+                entry.count++;  // ä¿®æ”¹count
+            }
+        }
+    }
+    // å…³é—­æ–‡ä»¶
     logFile.close();
     return ipList;
 }
 
-// ¹«¹²º¯Êı£ºÒì³£´¦Àí 
+// å…¬å…±å‡½æ•°ï¼šå¼‚å¸¸å¤„ç†
 void handleError(const string& errorMessage) {
     cerr << errorMessage << endl;
-    exit(1); // ÍË³ö³ÌĞò²¢·µ»Ø1
+    exit(1);  // é€€å‡ºç¨‹åºå¹¶è¿”å›1
 }
 
-// ÕÒ·ÃÎÊ´ÎÊı×î¶à£¬ÇÒ³¬¹ıºÚÃûµ¥´ÎÊıÏÂÏŞµÄIPµØÖ·£¨·µ»ØĞòºÅidx£© 
-vector<IPRecord> findRecExceedLimit(const vector<IPRecord>& ipList, size_t VISIT_TIMES) {
+// æ‰¾è®¿é—®æ¬¡æ•°æœ€å¤šï¼Œä¸”è¶…è¿‡é»‘åå•æ¬¡æ•°ä¸‹é™çš„IPåœ°å€ï¼ˆè¿”å›åºå·idxï¼‰
+vector<IPRecord> findRecExceedLimit(const vector<IPRecord>& ipList,
+                                    size_t VISIT_TIMES) {
     vector<IPRecord> blackList;
 
     for (int i = 0; i < ipList.size(); i++) {
-    	const auto& record = ipList[i];
+        const auto& record = ipList[i];
         if (record.count > VISIT_TIMES) {
-        	blackList.push_back(record);
+            blackList.push_back(record);
         }
     }
     return blackList;
 }
 
-// »ñÈ¡ºÚÃûµ¥ÁĞ±í£¬²¢·µ»Ø
+// è·å–é»‘åå•åˆ—è¡¨ï¼Œå¹¶è¿”å›
 vector<IPRecord> getBlackList(const string& BLACKLIST) {
-	vector<IPRecord> blackList;
-	
+    vector<IPRecord> blackList;
+
     ifstream inFile(BLACKLIST.c_str());
-    if (!inFile) return blackList; // ÎŞÊı¾İ·µ»Ø¿ÕÁĞ±í
-    
+    if (!inFile) return blackList;  // æ— æ•°æ®è¿”å›ç©ºåˆ—è¡¨
+
     vector<string> ipList = readLines(inFile);
     for (string line : ipList) {
-    	blackList.push_back(getLineIpRecord(line)); 
-	}
+        blackList.push_back(getLineIpRecord(line));
+    }
     inFile.close();
-    return blackList; // ·µ»Ø
+    return blackList;  // è¿”å›
 }
 
-// »ñÈ¡ºÚÃûµ¥ÁĞ±í£¬²¢·µ»ØipSet 
+// è·å–é»‘åå•åˆ—è¡¨ï¼Œå¹¶è¿”å›ipSet
 unordered_set<string> findBlackListIpSet(const string& BLACKLIST) {
-	unordered_set<string> ipSet; 
+    unordered_set<string> ipSet;
     ifstream inFile(BLACKLIST.c_str());
-    if (!inFile) return ipSet; // ÎŞÊı¾İ·µ»Ø¿Õset 
-    
+    if (!inFile) return ipSet;  // æ— æ•°æ®è¿”å›ç©ºset
+
     vector<string> ipList = readLines(inFile);
     for (string line : ipList) {
-    	size_t pos = line.find(' '); // ²éÕÒµÚÒ»¸ö¿Õ¸ñµÄÎ»ÖÃ
-    	if (pos != string::npos) line = line.substr(0, pos);
-    	ipSet.insert(line); 
-	}
+        size_t pos = line.find(' ');  // æŸ¥æ‰¾ç¬¬ä¸€ä¸ªç©ºæ ¼çš„ä½ç½®
+        if (pos != string::npos) line = line.substr(0, pos);
+        ipSet.insert(line);
+    }
     inFile.close();
-    return ipSet; // ·µ»Øset 
+    return ipSet;  // è¿”å›set
 }
 
-// ¹ıÂËµôÒÑ¾­ÔÚÓÀ¾ÃºÚÃûµ¥ÁĞ±íÖĞµÄ¼ÇÂ¼
-vector<IPRecord> removePermanent(const vector<IPRecord>& ipList, string BLACK_TEMP2) {
+// è¿‡æ»¤æ‰å·²ç»åœ¨æ°¸ä¹…é»‘åå•åˆ—è¡¨ä¸­çš„è®°å½•
+vector<IPRecord> removePermanent(const vector<IPRecord>& ipList,
+                                 string BLACK_TEMP2) {
     vector<IPRecord> blackList;
 
     const unordered_set<string> ipSet = findBlackListIpSet(BLACK_TEMP2);
-    if (ipSet.empty()) return ipList; // ÎŞĞè¹ıÂË£¬·µ»ØÔ­Ê¼Êı¾İ 
-    
+    if (ipSet.empty()) return ipList;  // æ— éœ€è¿‡æ»¤ï¼Œè¿”å›åŸå§‹æ•°æ®
+
     for (int i = 0; i < ipList.size(); i++) {
-    	const auto& black = ipList[i];
-    	if (ipSet.find(black.ipAddress) == ipSet.end()) {
-        	blackList.push_back(black); // ºÚÃûµ¥ 
+        const auto& black = ipList[i];
+        if (ipSet.find(black.ipAddress) == ipSet.end()) {
+            blackList.push_back(black);  // é»‘åå•
         }
     }
-    return blackList; // ·µ»ØĞÂµÄºÚÃûµ¥Êı¾İ 
+    return blackList;  // è¿”å›æ–°çš„é»‘åå•æ•°æ®
 }
 
-// ¼ÓÈënginx | ÓÀ¾ÃºÚÃûµ¥£¨¼ÓÈë²»´æÔÚµÄ¼ÇÂ¼£©
+// åŠ å…¥nginx | æ°¸ä¹…é»‘åå•ï¼ˆåŠ å…¥ä¸å­˜åœ¨çš„è®°å½•ï¼‰
 void addBlack(vector<IPRecord>& ipList, string BLACKLIST, bool isFull) {
-    if (ipList.size() == 0) return; // Ìø¹ı
+    if (ipList.size() == 0) return;  // è·³è¿‡
     const unordered_set<string> ipSet = findBlackListIpSet(BLACKLIST);
 
     ofstream outFile(BLACKLIST.c_str(), ios::app);
-    if (!outFile) handleError("Error opening temporary blacklist file: " + BLACKLIST); // Òì³£ÍË³ö
-    
+    if (!outFile)
+        handleError("Error opening temporary blacklist file: " +
+                    BLACKLIST);  // å¼‚å¸¸é€€å‡º
+
     for (IPRecord black : ipList) {
         if (ipSet.find(black.ipAddress) == ipSet.end()) {
             if (isFull) {
-                outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ¼ÓÈëÓÀ¾ÃºÚÃûµ¥
-    	        cout << "TEST! Add to black_temp_2.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ²âÊÔ´úÂë£¡´òÓ¡½øÈëÓÀ¾ÃºÚÃûµ¥µÄ
+                outFile << black.ipAddress << " " << black.opTime << " "
+                        << black.count << endl;  // åŠ å…¥æ°¸ä¹…é»‘åå•
+                cout << "TEST! Add to black_temp_2.conf = " << black.ipAddress
+                     << " " << black.opTime << " " << black.count
+                     << endl;  // æµ‹è¯•ä»£ç ï¼æ‰“å°è¿›å…¥æ°¸ä¹…é»‘åå•çš„
             } else {
-                outFile << black.ipAddress << " 1;" << endl; // ¼ÓÈënginxºÚÃûµ¥ - geo£¨58.214.22.70 1;£©
+                outFile << black.ipAddress << " 1;"
+                        << endl;  // åŠ å…¥nginxé»‘åå• - geoï¼ˆ58.214.22.70 1;ï¼‰
             }
         }
     }
     outFile.close();
 }
 
-// ¼ÓÈëÁÙÊ±ºÚÃûµ¥£¨¼ÓÈëËùÓĞ¼ÇÂ¼£©
+// åŠ å…¥ä¸´æ—¶é»‘åå•ï¼ˆåŠ å…¥æ‰€æœ‰è®°å½•ï¼‰
 void addBlackTemp(const vector<IPRecord>& ipList, string BLACKLIST) {
     ofstream outFile(BLACKLIST.c_str(), ios::app);
-    if (!outFile) handleError("Error opening temporary blacklist file: " + BLACKLIST); // Òì³£ÍË³ö
+    if (!outFile)
+        handleError("Error opening temporary blacklist file: " +
+                    BLACKLIST);  // å¼‚å¸¸é€€å‡º
 
     for (IPRecord black : ipList) {
-    	outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ¼ÓÈëÁÙÊ±ºÚÃûµ¥
-    	cout << "TEST! Add to black_temp.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ²âÊÔ´úÂë£¡´òÓ¡½øÈëÁÙÊ±ºÚÃûµ¥µÄ 
-	}
+        outFile << black.ipAddress << " " << black.opTime << " " << black.count
+                << endl;  // åŠ å…¥ä¸´æ—¶é»‘åå•
+        cout << "TEST! Add to black_temp.conf = " << black.ipAddress << " "
+             << black.opTime << " " << black.count
+             << endl;  // æµ‹è¯•ä»£ç ï¼æ‰“å°è¿›å…¥ä¸´æ—¶é»‘åå•çš„
+    }
     outFile.close();
 }
 
-// ¼ÆËãÊ±¼ä²î²¢×ª»»ÎªÌìÊı
+// è®¡ç®—æ—¶é—´å·®å¹¶è½¬æ¢ä¸ºå¤©æ•°
 size_t dateDiff(time_t opTime) {
-    time_t currentTime = time(nullptr); // »ñÈ¡µ±Ç°Ê±¼ä´Á
-    size_t secondsInADay = 24 * 60 * 60; // Ò»ÌìµÄÃëÊı
+    time_t currentTime = time(nullptr);   // è·å–å½“å‰æ—¶é—´æˆ³
+    size_t secondsInADay = 24 * 60 * 60;  // ä¸€å¤©çš„ç§’æ•°
     return (currentTime - opTime) / secondsInADay;
 }
 
-// ¼ÆËãÊ±¼ä²î²¢×ª»»ÎªÌìÊı
+// è®¡ç®—æ—¶é—´å·®å¹¶è½¬æ¢ä¸ºå¤©æ•°
 size_t timeDiff(time_t opTime) {
-    time_t currentTime = time(nullptr); // »ñÈ¡µ±Ç°Ê±¼ä´Á
-    size_t secondsInADay = 24 * 60 * 60; // Ò»ÌìµÄÃëÊı
+    time_t currentTime = time(nullptr);   // è·å–å½“å‰æ—¶é—´æˆ³
+    size_t secondsInADay = 24 * 60 * 60;  // ä¸€å¤©çš„ç§’æ•°
     return (currentTime - opTime) / secondsInADay;
 }
 
-// ÒÆ³ıÁÙÊ±ºÚÃûµ¥£¨½ö±£Áô²»ÔÚipListÖĞµÄ¼ÇÂ¼£©
+// ç§»é™¤ä¸´æ—¶é»‘åå•ï¼ˆä»…ä¿ç•™ä¸åœ¨ipListä¸­çš„è®°å½•ï¼‰
 void cutBlack(vector<IPRecord>& ipList, string BLACKLIST) {
-    const size_t BLACK_DAYS = 7; // 7ÌìÄÚ¼ÇÂ¼»á±£ÁôÔÚÁÙÊ±ºÚÃûµ¥£¬·½±ã²éÑ¯ÀÛ»ı´ÎÊı
-    
-    // ipList×ªÎªipSet 
+    const size_t BLACK_DAYS =
+        7;  // 7å¤©å†…è®°å½•ä¼šä¿ç•™åœ¨ä¸´æ—¶é»‘åå•ï¼Œæ–¹ä¾¿æŸ¥è¯¢ç´¯ç§¯æ¬¡æ•°
+
+    // ipListè½¬ä¸ºipSet
     unordered_set<string> ipSet;
     for (const auto& record : ipList) {
         ipSet.insert(record.ipAddress);
     }
 
-	// ipListÉèÖÃÎªÁÙÊ±ºÚÃûµ¥ÁĞ±í 
+    // ipListè®¾ç½®ä¸ºä¸´æ—¶é»‘åå•åˆ—è¡¨
     ipList = getBlackList(BLACKLIST);
 
-    ofstream outFile(BLACKLIST.c_str(), ios::trunc); // Çå³ıÎÄ¼şÄÚÈİ²¢ÖØĞÂĞ´Èë 
-    if (!outFile) handleError("Error opening temporary blacklist file: " + BLACKLIST); // Òì³£ÍË³ö
-    
+    ofstream outFile(BLACKLIST.c_str(), ios::trunc);  // æ¸…é™¤æ–‡ä»¶å†…å®¹å¹¶é‡æ–°å†™å…¥
+    if (!outFile)
+        handleError("Error opening temporary blacklist file: " +
+                    BLACKLIST);  // å¼‚å¸¸é€€å‡º
+
     for (IPRecord black : ipList) {
-	    if (dateDiff(black.opTime) >= BLACK_DAYS) {
-    	    cout << "TEST! Remove(7day) black_temp.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ²âÊÔ´úÂë£¡´òÓ¡ÍË³öÁÙÊ±ºÚÃûµ¥µÄ£¨³¬¹ı7Ìì£© 
-	        continue; // Èç¹ûÊ±¼ä²î´óÓÚ7Ìì£¬ÌŞ³ı´Ë¼ÇÂ¼
-	    }
-	    if (ipSet.find(black.ipAddress) != ipSet.end()) {
-    	    cout << "TEST! Remove(perm) black_temp.conf = " << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ²âÊÔ´úÂë£¡´òÓ¡ÍË³öÓÀ¾ÃºÚÃûµ¥µÄ£¨×ªÎªÓÀ¾Ã£© 
-	        continue; // ÌŞ³ı±¾´Î×ªÓÀ¾ÃºÚÃûµ¥µÄ¼ÇÂ¼
-	    }
-	    outFile << black.ipAddress << " " << black.opTime << " " << black.count << endl; // ¼ÓÈëÁÙÊ±ºÚÃûµ¥ 
+        if (dateDiff(black.opTime) >= BLACK_DAYS) {
+            cout << "TEST! Remove(7day) black_temp.conf = " << black.ipAddress
+                 << " " << black.opTime << " " << black.count
+                 << endl;  // æµ‹è¯•ä»£ç ï¼æ‰“å°é€€å‡ºä¸´æ—¶é»‘åå•çš„ï¼ˆè¶…è¿‡7å¤©ï¼‰
+            continue;      // å¦‚æœæ—¶é—´å·®å¤§äº7å¤©ï¼Œå‰”é™¤æ­¤è®°å½•
+        }
+        if (ipSet.find(black.ipAddress) != ipSet.end()) {
+            cout << "TEST! Remove(perm) black_temp.conf = " << black.ipAddress
+                 << " " << black.opTime << " " << black.count
+                 << endl;  // æµ‹è¯•ä»£ç ï¼æ‰“å°é€€å‡ºæ°¸ä¹…é»‘åå•çš„ï¼ˆè½¬ä¸ºæ°¸ä¹…ï¼‰
+            continue;      // å‰”é™¤æœ¬æ¬¡è½¬æ°¸ä¹…é»‘åå•çš„è®°å½•
+        }
+        outFile << black.ipAddress << " " << black.opTime << " " << black.count
+                << endl;  // åŠ å…¥ä¸´æ—¶é»‘åå•
     }
     outFile.close();
 }
 
-// ÖØÖÃnginxºÚÃûµ¥£¨ÏÈĞ´ÈëÓÀ¾ÃºÚÃûµ¥£¬ÔÙĞ´ÈëÁÙÊ±ºÚÃûµ¥£© 
-void resetBlack(string BLACK_NGINX, string BLACK_TEMP, string BLACK_TEMP2, size_t MIN_STEP) {
-	// »ñÈ¡ÓÀ¾ÃºÚÃûµ¥IPµØÖ·
+// é‡ç½®nginxé»‘åå•ï¼ˆå…ˆå†™å…¥æ°¸ä¹…é»‘åå•ï¼Œå†å†™å…¥ä¸´æ—¶é»‘åå•ï¼‰
+void resetBlack(string BLACK_NGINX, string BLACK_TEMP, string BLACK_TEMP2,
+                size_t MIN_STEP) {
+    // è·å–æ°¸ä¹…é»‘åå•IPåœ°å€
     unordered_set<string> ipSet = findBlackListIpSet(BLACK_TEMP2);
-    // »ñÈ¡ÁÙÊ±ºÚÃûµ¥IPµØÖ·
+    // è·å–ä¸´æ—¶é»‘åå•IPåœ°å€
     vector<IPRecord> blackList = getBlackList(BLACK_TEMP);
-    for (IPRecord black: blackList) {
-    	if (time(nullptr) - black.opTime > 60 * MIN_STEP) continue; // Ìø¹ı30·ÖÖÓÇ°µÄÁÙÊ±ºÚÃûµ¥¼ÇÂ¼
-        ipSet.insert(black.ipAddress); // ºÏ²¢ÁÙÊ±ºÚÃûµ¥IPµØÖ· 
-	}
-	// ÖØĞ´nginxºÚÃûµ¥
-	ofstream outFile(BLACK_NGINX.c_str(), ios::trunc);
-    if (!outFile) handleError("Error opening temporary blacklist file: " + BLACK_NGINX); // Òì³£ÍË³ö
-	// Ñ­»·±éÀú ipSet ²¢Ğ´Èëµ½ÎÄ¼ş
+    for (IPRecord black : blackList) {
+        if (time(nullptr) - black.opTime > 60 * MIN_STEP)
+            continue;                   // è·³è¿‡30åˆ†é’Ÿå‰çš„ä¸´æ—¶é»‘åå•è®°å½•
+        ipSet.insert(black.ipAddress);  // åˆå¹¶ä¸´æ—¶é»‘åå•IPåœ°å€
+    }
+    // é‡å†™nginxé»‘åå•
+    ofstream outFile(BLACK_NGINX.c_str(), ios::trunc);
+    if (!outFile)
+        handleError("Error opening temporary blacklist file: " +
+                    BLACK_NGINX);  // å¼‚å¸¸é€€å‡º
+                                   // å¾ªç¯éå† ipSet å¹¶å†™å…¥åˆ°æ–‡ä»¶
     for (const string& ip : ipSet) {
-        outFile << ip << " 1;" << endl; // ¼ÓÈënginxºÚÃûµ¥ - geo£¨58.214.22.70 1;£©
+        outFile << ip << " 1;"
+                << endl;  // åŠ å…¥nginxé»‘åå• - geoï¼ˆ58.214.22.70 1;ï¼‰
     }
     outFile.close();
 }
 
-// »ñÈ¡µ±Ç°Ê±¼ä
+// è·å–å½“å‰æ—¶é—´
 tm* getCurrentTime() {
-	// »ñÈ¡µ±Ç°Ê±¼äµã
+    // è·å–å½“å‰æ—¶é—´ç‚¹
     auto now = chrono::system_clock::now();
-    // ×ª»»Îªtime_tÀàĞÍ
+    // è½¬æ¢ä¸ºtime_tç±»å‹
     time_t currentTime = chrono::system_clock::to_time_t(now);
-    // ×ª»»Îªtm½á¹¹Ìå
+    // è½¬æ¢ä¸ºtmç»“æ„ä½“
     tm* localTime = localtime(&currentTime);
     return localTime;
 }
 
-// ÊÇ·ñ·ûºÏ·ÖÖÓ²½³¤£¨Ä¿Ç°Îª30·ÖÖÓ£©
+// æ˜¯å¦ç¬¦åˆåˆ†é’Ÿæ­¥é•¿ï¼ˆç›®å‰ä¸º30åˆ†é’Ÿï¼‰
 string printCurrentTime() {
-	// »ñÈ¡µ±Ç°Ê±¼äµã
+    // è·å–å½“å‰æ—¶é—´ç‚¹
     tm* currentTime = getCurrentTime();
-    // Ê¹ÓÃ×Ö·û´®Á÷À´¹¹½¨Ê±¼ä×Ö·û´®
+    // ä½¿ç”¨å­—ç¬¦ä¸²æµæ¥æ„å»ºæ—¶é—´å­—ç¬¦ä¸²
     std::ostringstream oss;
-    oss << (currentTime->tm_year + 1900) << '-' // Äê
-        << (currentTime->tm_mon + 1) << '-'     // ÔÂ
-        << currentTime->tm_mday << ' '          // ÈÕ
-        << currentTime->tm_hour << ':'          // Ê±
-        << currentTime->tm_min << ':'           // ·Ö
-        << currentTime->tm_sec << ' ';          // Ãë
-    return oss.str(); // ·µ»Ø¹¹½¨µÄ×Ö·û´®    
+    oss << (currentTime->tm_year + 1900) << '-'  // å¹´
+        << (currentTime->tm_mon + 1) << '-'      // æœˆ
+        << currentTime->tm_mday << ' '           // æ—¥
+        << currentTime->tm_hour << ':'           // æ—¶
+        << currentTime->tm_min << ':'            // åˆ†
+        << currentTime->tm_sec << ' ';           // ç§’
+    return oss.str();                            // è¿”å›æ„å»ºçš„å­—ç¬¦ä¸²
 }
 
-// ÊÇ·ñ·ûºÏ·ÖÖÓ²½³¤£¨Ä¿Ç°Îª30·ÖÖÓ£©
+// æ˜¯å¦ç¬¦åˆåˆ†é’Ÿæ­¥é•¿ï¼ˆç›®å‰ä¸º30åˆ†é’Ÿï¼‰
 bool isMinStep(size_t MIN_STEP) {
-	// »ñÈ¡µ±Ç°Ê±¼äµã
+    // è·å–å½“å‰æ—¶é—´ç‚¹
     tm* localTime = getCurrentTime();
-    // »ñÈ¡·ÖÖÓÊı
+    // è·å–åˆ†é’Ÿæ•°
     int minutes = localTime->tm_min;
-    // ÅĞ¶Ï·ÖÖÓÊıÊÇ·ñÎª10µÄ±¶Êı
+    // åˆ¤æ–­åˆ†é’Ÿæ•°æ˜¯å¦ä¸º10çš„å€æ•°
     return (minutes % MIN_STEP == 0);
 }
 
-// »ñÈ¡½øÈëÓÀ¾ÃºÚÃûµ¥µÄ¼ÇÂ¼
+// è·å–è¿›å…¥æ°¸ä¹…é»‘åå•çš„è®°å½•
 vector<IPRecord> getBlackPermenant(string BLACK_TEMP) {
-    const size_t BLACK_DAYS = 7; // 7ÌìÄÚ¼ÇÂ¼»á±£ÁôÔÚÁÙÊ±ºÚÃûµ¥£¬·½±ã²éÑ¯ÀÛ»ı´ÎÊı
-    const size_t BLACK_TIMES = 6; // 7ÌìÄÚ³¬¹ı6´Î½øÁÙÊ±ºÚÃûµ¥£¬¸ÄÎª½øÓÀ¾ÃºÚÃûµ¥£¨ÓÀ¾Ã·âIP£©
-	
+    const size_t BLACK_DAYS =
+        7;  // 7å¤©å†…è®°å½•ä¼šä¿ç•™åœ¨ä¸´æ—¶é»‘åå•ï¼Œæ–¹ä¾¿æŸ¥è¯¢ç´¯ç§¯æ¬¡æ•°
+    const size_t BLACK_TIMES =
+        6;  // 7å¤©å†…è¶…è¿‡6æ¬¡è¿›ä¸´æ—¶é»‘åå•ï¼Œæ”¹ä¸ºè¿›æ°¸ä¹…é»‘åå•ï¼ˆæ°¸ä¹…å°IPï¼‰
+
     ifstream inFile(BLACK_TEMP.c_str());
-    if (!inFile) handleError("Error opening temporary blacklist file: " + BLACK_TEMP); // Òì³£ÍË³ö
+    if (!inFile)
+        handleError("Error opening temporary blacklist file: " +
+                    BLACK_TEMP);  // å¼‚å¸¸é€€å‡º
 
     inFile.seekg(0);
-    map<string, int> ipCountMap; // mapµÄkey=ºÚÃûµ¥IPµØÖ·£»value=ÎÄ¼şÖĞ³öÏÖ¶àÉÙ´Î£¨ĞĞ£©
-    string line; // ÎÄ¼şÖĞ¶ÁÈ¡Ò»ĞĞ²¢ÓèÒÔ´¦Àí
-    vector<IPRecord> ipList; // Ğè½øÈëÓÀ¾ÃºÚÃûµ¥µÄËùÓĞIPµØÖ·¼°Ïà¹ØĞÅÏ¢
+    map<string, int>
+        ipCountMap;  // mapçš„key=é»‘åå•IPåœ°å€ï¼›value=æ–‡ä»¶ä¸­å‡ºç°å¤šå°‘æ¬¡ï¼ˆè¡Œï¼‰
+    string line;     // æ–‡ä»¶ä¸­è¯»å–ä¸€è¡Œå¹¶äºˆä»¥å¤„ç†
+    vector<IPRecord> ipList;  // éœ€è¿›å…¥æ°¸ä¹…é»‘åå•çš„æ‰€æœ‰IPåœ°å€åŠç›¸å…³ä¿¡æ¯
     while (getline(inFile, line)) {
-    	IPRecord record = getLineIpRecord(line);
-	    // Ê¹ÓÃistringstreamÀ´½âÎö×Ö·û´®
-	    if (dateDiff(record.opTime) >= BLACK_DAYS) continue; // Èç¹ûÊ±¼ä²î´óÓÚ7Ìì£¬ÌŞ³ı´Ë¼ÇÂ¼
-	    // Ìí¼ÓÊı¾İµ½map
-	    if (ipCountMap.find(record.ipAddress) == ipCountMap.end()) {
-            ipCountMap[record.ipAddress] = 1; // ºÚÃûµ¥³öÏÖ´ÎÊı = 1
+        IPRecord record = getLineIpRecord(line);
+        // ä½¿ç”¨istringstreamæ¥è§£æå­—ç¬¦ä¸²
+        if (dateDiff(record.opTime) >= BLACK_DAYS)
+            continue;  // å¦‚æœæ—¶é—´å·®å¤§äº7å¤©ï¼Œå‰”é™¤æ­¤è®°å½•
+        // æ·»åŠ æ•°æ®åˆ°map
+        if (ipCountMap.find(record.ipAddress) == ipCountMap.end()) {
+            ipCountMap[record.ipAddress] = 1;  // é»‘åå•å‡ºç°æ¬¡æ•° = 1
         } else {
-        	// ºÚÃûµ¥³öÏÖ´ÎÊı + 1
+            // é»‘åå•å‡ºç°æ¬¡æ•° + 1
             if (++ipCountMap[record.ipAddress] == BLACK_TIMES) {
-            	ipList.push_back(getLineIpRecord(line)); // ¼ÓÈëÁĞ±í 
-			}
+                ipList.push_back(getLineIpRecord(line));  // åŠ å…¥åˆ—è¡¨
+            }
         }
     }
     return ipList;
 }
 
 /**
- * ÁÙÊ±ºÚÃûµ¥Âß¼­£º
- * 1£©Ã¿6·ÖÖÓ£¨360Ãë£©³¬¹ı2600´Î·ÃÎÊ¼ÇÂ¼£¬»á±»¼ÓÈëµ½ÁÙÊ±ºÚÃûµ¥BLACK_TEMP [IP Ê±¼ä´Á ´ÎÊı]
- * 2£©7ÌìÄÚÖÁÉÙ6´Î±»ÁĞÈëºÚÃûµ¥£¬»á±»¼ÓÈëµ½ÓÀ¾ÃºÚÃûµ¥BLACK_TEMP2 
- * @param file ´ı´¦ÀíÎÄ¼ş 
- * @param endPos ½áÊøÖ¸ÕëÎ»ÖÃ 
- * @param numLines ¶ÁÈ¡ĞĞÊı 
- * @return pair<vector<string>, streampos> ¶ÁÈ¡½á¹ûÁĞ±í | ĞÂÖ¸ÕëÎ»ÖÃ 
+ * ä¸´æ—¶é»‘åå•é€»è¾‘ï¼š
+ * 1ï¼‰æ¯6åˆ†é’Ÿï¼ˆ360ç§’ï¼‰è¶…è¿‡2600æ¬¡è®¿é—®è®°å½•ï¼Œä¼šè¢«åŠ å…¥åˆ°ä¸´æ—¶é»‘åå•BLACK_TEMP [IP
+ * æ—¶é—´æˆ³ æ¬¡æ•°] 2ï¼‰7å¤©å†…è‡³å°‘6æ¬¡è¢«åˆ—å…¥é»‘åå•ï¼Œä¼šè¢«åŠ å…¥åˆ°æ°¸ä¹…é»‘åå•BLACK_TEMP2
+ * @param file å¾…å¤„ç†æ–‡ä»¶
+ * @param endPos ç»“æŸæŒ‡é’ˆä½ç½®
+ * @param numLines è¯»å–è¡Œæ•°
+ * @return pair<vector<string>, streampos> è¯»å–ç»“æœåˆ—è¡¨ | æ–°æŒ‡é’ˆä½ç½®
  */
 int main() {
-    const size_t TIME_RANGE = 360; // Ò»´ÎÅĞ¶Ï6·ÖÖÓ360ÃëÄÚµÄÈÕÖ¾ 
-    const size_t VISIT_TIMES = 2600; // ±ØĞëÃ¿6·ÖÖÓ³¬¹ı2600´Î·ÃÎÊ£¬²Å»á±»·Å½øºÚÃûµ¥
-    const size_t MIN_STEP = 30; // Ã¿¸ô30·ÖÖÓÖØËãÒ»´ÎÓÀ¾ÃºÚÃûµ¥
-    // ÈÕÖ¾ÎÄ¼şÂ·¾¶
-    string LOG_FILE="/var/log/nginx/wp.edu_access.log"; // ÆäËûÏµÍ³£¨ÈçLinux£©
-    // ºÚÃûµ¥ÎÄ¼şÂ·¾¶
-    string BLACK_NGINX="/etc/nginx/file/black_nginx.conf"; // nginxºÚÃûµ¥
-    string BLACK_TEMP="/etc/nginx/file/black_temp.conf"; // ÁÙÊ±ºÚÃûµ¥
-    string BLACK_TEMP2="/etc/nginx/file/black_temp_2.conf"; // ÁÙÊ±ºÚÃûµ¥-ÓÀ¾Ã
-    #ifdef _WIN32
-        LOG_FILE = "./file/wp.edu_access.log"; // WindowsÏµÍ³
-        BLACK_NGINX = "./file/black_nginx.conf"; // nginxºÚÃûµ¥
-        BLACK_TEMP = "./file/black_temp.conf"; // ÁÙÊ±ºÚÃûµ¥
-        BLACK_TEMP2 = "./file/black_temp_2.conf"; // ÁÙÊ±ºÚÃûµ¥-ÓÀ¾Ã
-    #endif
-    // ÁÙÊ±ÎÄ¼şÂ·¾¶
-    const string TEMP_FILE="/tmp/blacklist.tmp";
-	cout << printCurrentTime() << "blacklist check cycle starts" << endl; // ´òÓ¡ÈÕÖ¾ĞÅÏ¢
-    vector<IPRecord> blackList = getIpList(LOG_FILE, TIME_RANGE); // ¶ÁÈ¡×î½ü6·ÖÖÓËùÓĞ·ÃÎÊ¼ÇÂ¼
-    blackList = findRecExceedLimit(blackList, VISIT_TIMES); // Í³¼Æ´ı½øÈëºÚÃûµ¥µÄÁĞ±í
-    blackList = removePermanent(blackList, BLACK_TEMP2); // ÌŞ³ıÓÀ¾ÃºÚÃûµ¥ÖĞµÄ¼ÇÂ¼£¨ÎŞĞè´¦Àí£©
-    addBlack(blackList, BLACK_NGINX, false); // ¼ÓÈënginxºÚÃûµ¥
-    addBlackTemp(blackList, BLACK_TEMP); // ¼ÓÈëÁÙÊ±ºÚÃûµ¥
+    const size_t TIME_RANGE = 360;  // ä¸€æ¬¡åˆ¤æ–­6åˆ†é’Ÿ360ç§’å†…çš„æ—¥å¿—
+    const size_t VISIT_TIMES =
+        2600;                    // å¿…é¡»æ¯6åˆ†é’Ÿè¶…è¿‡2600æ¬¡è®¿é—®ï¼Œæ‰ä¼šè¢«æ”¾è¿›é»‘åå•
+    const size_t MIN_STEP = 30;  // æ¯éš”30åˆ†é’Ÿé‡ç®—ä¸€æ¬¡æ°¸ä¹…é»‘åå•
+    // æ—¥å¿—æ–‡ä»¶è·¯å¾„
+    string LOG_FILE =
+        "/var/log/nginx/wp.edu_access.log";  // å…¶ä»–ç³»ç»Ÿï¼ˆå¦‚Linuxï¼‰
+    // é»‘åå•æ–‡ä»¶è·¯å¾„
+    string BLACK_NGINX = "/etc/nginx/file/black_nginx.conf";  // nginxé»‘åå•
+    string BLACK_TEMP = "/etc/nginx/file/black_temp.conf";    // ä¸´æ—¶é»‘åå•
+    string BLACK_TEMP2 =
+        "/etc/nginx/file/black_temp_2.conf";  // ä¸´æ—¶é»‘åå•-æ°¸ä¹…
+#ifdef _WIN32
+    LOG_FILE = "./file/wp.edu_access.log";     // Windowsç³»ç»Ÿ
+    BLACK_NGINX = "./file/black_nginx.conf";   // nginxé»‘åå•
+    BLACK_TEMP = "./file/black_temp.conf";     // ä¸´æ—¶é»‘åå•
+    BLACK_TEMP2 = "./file/black_temp_2.conf";  // ä¸´æ—¶é»‘åå•-æ°¸ä¹…
+#endif
+    // ä¸´æ—¶æ–‡ä»¶è·¯å¾„
+    const string TEMP_FILE = "/tmp/blacklist.tmp";
+    cout << printCurrentTime() << "blacklist check cycle starts"
+         << endl;  // æ‰“å°æ—¥å¿—ä¿¡æ¯
+    vector<IPRecord> blackList =
+        getIpList(LOG_FILE, TIME_RANGE);  // è¯»å–æœ€è¿‘6åˆ†é’Ÿæ‰€æœ‰è®¿é—®è®°å½•
+    blackList =
+        findRecExceedLimit(blackList, VISIT_TIMES);  // ç»Ÿè®¡å¾…è¿›å…¥é»‘åå•çš„åˆ—è¡¨
+    blackList = removePermanent(
+        blackList, BLACK_TEMP2);  // å‰”é™¤æ°¸ä¹…é»‘åå•ä¸­çš„è®°å½•ï¼ˆæ— éœ€å¤„ç†ï¼‰
+    addBlack(blackList, BLACK_NGINX, false);  // åŠ å…¥nginxé»‘åå•
+    addBlackTemp(blackList, BLACK_TEMP);      // åŠ å…¥ä¸´æ—¶é»‘åå•
 
-    // Ã¿¸ô30·ÖÖÓÖ´ĞĞÒ»´Î£¨¼ÓÈëÓÀ¾ÃºÚÃûµ¥£©
+    // æ¯éš”30åˆ†é’Ÿæ‰§è¡Œä¸€æ¬¡ï¼ˆåŠ å…¥æ°¸ä¹…é»‘åå•ï¼‰
     if (isMinStep(MIN_STEP)) {
-        blackList = getBlackPermenant(BLACK_TEMP); // »ñÈ¡±¾´Î½øÈëÓÀ¾ÃºÚÃûµ¥µÄ¼ÇÂ¼
-        addBlack(blackList, BLACK_TEMP2, true); // ¼ÓÈëÓÀ¾ÃºÚÃûµ¥
-        cutBlack(blackList, BLACK_TEMP); // ÒÆ³ıÁÙÊ±ºÚÃûµ¥
-        resetBlack(BLACK_NGINX, BLACK_TEMP, BLACK_TEMP2, MIN_STEP); // ÖØÖÃnginxºÚÃûµ¥
+        blackList =
+            getBlackPermenant(BLACK_TEMP);       // è·å–æœ¬æ¬¡è¿›å…¥æ°¸ä¹…é»‘åå•çš„è®°å½•
+        addBlack(blackList, BLACK_TEMP2, true);  // åŠ å…¥æ°¸ä¹…é»‘åå•
+        cutBlack(blackList, BLACK_TEMP);         // ç§»é™¤ä¸´æ—¶é»‘åå•
+        resetBlack(BLACK_NGINX, BLACK_TEMP, BLACK_TEMP2,
+                   MIN_STEP);  // é‡ç½®nginxé»‘åå•
     }
     return 0;
 }
-
