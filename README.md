@@ -1,2 +1,2 @@
-# C-small-programs
-c++ small programs for windows/linux usage (business related)
+# toolkit-cpp-c
+c++ / c small programs for linux / windows usage
