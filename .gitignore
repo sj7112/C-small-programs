@@ -1,0 +1,9 @@
+build/
+include/
+**/.vscode/
+luogu/
+noip/
+sng51/
+sng52/
+toolkit/
+*.code-workspace
